@@ -1,0 +1,20 @@
+# The dsh-progress-secretary bundle patch: one host row.
+#
+# `dsh plugin --profile <name> add dsh-progress-secretary` installs this package
+# and the Loader applies this insert. The row publishes no service, so it is safe
+# at the profile (host) plane and does not need an isolate realm: the operations
+# are per-agent only because the command invocation and `agent.followup()` carry
+# the agent, not because the plugin keeps per-session state.
+#
+# A patch replaces the targeted row's whole `config`, so the commented keys
+# below are the full set this plugin reads — and the full set is the spec's
+# section 8 table: a key left here advertises a capability this plugin does not
+# have. Uncomment to override.
+
+- insert:
+    - id: progress-secretary
+      name: dsh-progress-secretary
+      # config:
+      #   notebook: .dsh/progress.md
+      #   noteCommand: note
+      #   briefCommand: brief
