@@ -203,11 +203,22 @@ npm test
 
 | 维度 | 声明 |
 |---|---|
-| DSH | peer 声明 `@deepseek-ai/dsh-llm >=0.1.2-rc.1 <0.2.0`、`@deepseek-ai/cordis ^4.0.2`、`@deepseek-ai/schemastery >=3.0.0`。实测基线：`@deepseek-ai/dsh` `0.1.5-rc.3`。 |
+| DSH | peer 声明 `@deepseek-ai/dsh-llm >=0.1.2-rc.1 <0.2.0`、`@deepseek-ai/cordis ^4.0.2`、`@deepseek-ai/schemastery >=3.0.0`。 |
+| DSH 实测 | `0.1.5-rc.3`（本机长期运行的 profile）、`0.1.7-rc.1`。见下方「验到了什么」。 |
 | Node.js | `^22.19.0 || >=24.0.0`（见 `engines`）。 |
 | Profile | **只支持 `web`**。`dsh.client.platform = "web"`：两个按钮与结果卡片是 Web 客户端的界面。host 半边本身与 profile 无关，但没有 client 半边就只剩两个命令。 |
 | 操作系统 | 没有平台相关代码，macOS / Linux / Windows 通用。本次实测基线为 macOS。 |
 | 生命周期脚本 | **无** `preinstall` / `install` / `postinstall` / `prepare`。安装即用，不需要构建授权。 |
+
+### 验到了什么，没验到什么
+
+`0.1.7-rc.1` 的判定基于三组证据，**不含**「人在浏览器里点过按钮」：
+
+1. 整套 55 个用例对着 `0.1.7-rc.1` 的真实平台包跑通（0 skipped）—— 其中 `client-slots.integration` 打的是**真实 `SlotRegistry`**，`commands-integration` 打的是**真实 `dsh-commands` 注册表 + 真实 Cordis**；
+2. 在一次性 `$DSH_HOME` 里用官方 CLI 从 GitHub 固定 commit 安装成功，装进去的 `lib/index.js` 与仓库逐字节一致；
+3. `dsh --profile web --dump-config` 在 `0.1.7-rc.1` 上退出码 0、无报错，本插件的 loader 行正确合成。
+
+**没验到**：真实进程启动后浏览器里的实际渲染，以及卸载/回滚路径。这两项得在真机上有人看，本插件因此不声称它们已验证。
 
 ## 权限
 

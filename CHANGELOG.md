@@ -6,6 +6,31 @@
 
 ---
 
+## 0.7.3 — 上架：把「能装」和「说清楚」补齐
+
+**问题**：这个插件此前只在**一个**工作区里、用 `link:` 装法活着，因此从来没有回答过两个对外的问题：别人怎么装，以及在哪些 DSH 版本上装得住。`README` 里的安装命令是 npm 包名（而插件市场只接受固定到 commit 的 GitHub 源），兼容范围、权限面、已知风险三个字都没写；`package.json` 声明了 MIT 却没有 `LICENSE` 文件。更要命的是**位置**：两份 spec 与 `NOTES.md`/`CHANGELOG.md` 躺在插件的上一级，`test/spec-conformance.test.mjs` 用 `../../spec.md` 去读 —— 那条路径越过任何可能的仓库边界，别人 clone 下来测试必挂。
+
+**修正：**
+
+- 插件目录成为**独立的仓库根**；四份文档搬进包内，conformance 套件的读取路径从 `../../` 收到 `../`。理由是它们本来就是**插件自己的**文档，不是工作区文档。
+- 补 `LICENSE`；`package.json` 补 `repository`/`homepage`/`bugs`，`files` 收进 `CHANGELOG.md` 与 `LICENSE`。
+- README 补 GitHub 安装命令、兼容矩阵、权限表（只读一个工作区文件 / 无网络 / 无 shell / 无凭据）、已知风险。
+- 新增 `dsh.marketplace` 与 `dsh.compatibility` 两个市场元数据段。**DSH 本身不解析它们** —— 它只读 `dsh.bundle.patch`、`dsh.profile` 和 `dsh.client` 的四个字段；加这两段不影响加载，已核对平台源码。
+
+**为什么 `dsh.compatibility` 不是可有可无**：DSH-Store 的自动雷达每 8 小时按 `topic:dsh-plugin` 等四个查询扫 GitHub（本仓库的 topic 已覆盖），但目录的准入要求是「作者必须在**当期最新三版** DSH 里至少声明一个精确 `compatible`」。查了当期目录 715 个条目：`approved` 12 个、`blocked` 317、`unlisted` 386 —— **窗口内有 `compatible` 的只有 12 个，且全部是 `approved`**。不声明就等于自动落进 `blocked`/`unlisted`。当期窗口是 `0.1.7-alpha.1`、`0.1.7-alpha.2`、`0.1.7-rc.1`，而当时声明的 `0.1.5-rc.3` **恰好不在窗口内**。
+
+**声明 0.1.7-rc.1 的依据**（三组，缺一不可）：
+
+1. 整套 55 个用例对着 `0.1.7-rc.1` 的真实平台包跑通，**0 skipped** —— 包含打真实 `SlotRegistry` 与真实 `dsh-commands` 注册表的那两个集成套件；
+2. 一次性 `$DSH_HOME` 中用官方 CLI 从 GitHub 固定 commit 安装成功，装进去的 `lib/index.js` 与仓库逐字节一致；
+3. `dsh --profile web --dump-config` 在 `0.1.7-rc.1` 上退出码 0、无报错，loader 行正确合成。
+
+**刻意没声明什么**：没验过「真实进程启动后浏览器里的渲染」与「卸载/回滚」，所以不写这两项。`0.1.5-rc.3` 保留（那是本机长期运行的 profile，是运行期证据），其余版本留空 —— **空即未知，不拿 peer 范围冒充验收**。
+
+**运行时影响**：无。本次不动 `lib/*.js`，不需要重启；改的是元数据与文档。
+
+---
+
 ## 0.7.2 — 边界管到文档：README 不再点名
 
 **问题**：0.7.0 与 0.7.1 把红线钉在源码和发布产物上，但 `README.md` 是随包发出去、用户真正会读的那份，它有三处在**点名**另一个插件 —— 归属表里的「用它自己的 `/rewind`」、「已知限制」里的同一句，以及一条具体到「如果你装了检查点插件，注意它的 copy provider 默认把 `.dsh` 排除在外」的说明。它不 import 任何东西，却仍然把依赖写了回来：不指名，才谈得上「不知道它的存在」；指名，就是知道。
