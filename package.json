@@ -55,6 +55,11 @@
       "requiresBuildApproval": false,
       "requiresRestart": true,
       "manualSteps": false
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.5-rc.3": "compatible"
+      }
     }
   },
   "engines": {
