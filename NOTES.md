@@ -150,6 +150,11 @@
 - **我无法自己做真实启动验证**：沙箱禁止写 `~/.dsh`（`dsh --profile web --help` 都会 EPERM ← 它就会写 profile 的 `cordis.yml`），且第二个实例会重写 `cordis.yml`，怕扰动正在跑的 host。替代证据是：host 侧真实 Cordis + 真实命令注册表、客户端真实 SlotRegistry，加上用户的实机观察。
 - **占位符比较必须在剥离列表标记之后**：`- （无）` 与 `（无）` 永不相等。
 - **「测试通过」不等于「功能验证」；「没看到警告」不等于成功。** 0.4.x 的三个 bug 全都是测试全绿时真实存在着的。
+- **发布验收配方（0.1.7-rc.2 起固化；市场窗口每漂一次就要重走一遍）**：全过程在工作区内完成，不写 `~/.dsh`、不提权。上一条说的「无法做真实启动验证」仍然成立 —— 这里验的是 **CLI 级**的「装得上、配置合成得对」，不是浏览器里的渲染。四步：
+  1. 建一个临时 home，把三处缓存都指进工作区：`DSH_HOME=<ws>/.verify/home`、`XDG_CACHE_HOME=<ws>/.verify/cache`、`npm_config_store_dir=<ws>/.verify/store`（pnpm 实际还会把 content-addressable store 落到 `<ws>/.pnpm-store`）。corepack 会按需下载 pnpm，也落在缓存里。
+  2. `dsh plugin --profile web add 'github:<repo>#<40 位 commit>'`（市场就是按固定 commit 装的）。然后**必须核对** `profiles/web/pnpm-lock.yaml`：`resolution.tarball` 应逐字等于 `https://codeload.github.com/<repo>/tar.gz/<那个 commit>`，`version` 应是目标版本 —— 这一步才把「真从 GitHub 固定 commit 装的」与「本地 store 里的旧物」区分开；只看安装输出的 `+ name x.y.z` 不够（`resolved/reused/downloaded` 计数会因 store 命中而骗人）。
+  3. `cmp` 装进去的 `lib/*.js`、`cordis.patch.yml`、`package.json` 与仓库逐字节比对。注意 git 源安装**会**套用 `package.json` 的 `files`：装出来的目录里只有 `files` 列出的东西（没有 `test/`、没有 `spec.md`、没有 `NOTES.md`），所以别拿「`NOTES.md` 不在里面」当异常。
+  4. 同一个 home 上 `dsh --profile web --dump-config`：要求退出码 0、过滤掉 UNDICI 警告后 stderr 为空、dump 里出现 `# == dsh-progress-secretary` / `- id: progress-secretary` / `  name: dsh-progress-secretary` 三行。**没设 `DSH_HOME` 时连 `dsh plugin --help` 都会 EPERM**（它要写 `~/.dsh/profiles/web/*.lock`），所以 `--help` 不能用来先探路。
 
 ---
 
