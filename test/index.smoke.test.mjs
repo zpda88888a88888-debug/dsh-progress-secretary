@@ -256,6 +256,36 @@ test('a notebook that parses into no sections still yields a valid snapshot', as
   assert.match(source.sections[0].text, /杂记/u)
 })
 
+// ── message sources (format v4) ──────────────────────────────────────────────
+
+test('both messages carry a producer-owned source kind, not the retired plugin wrapper', async () => {
+  // Format v4 refuses `{ kind: 'plugin', plugin }` at Session admission with
+  // "format v4 message requires a producer-owned source kind". A message that
+  // carries the wrapper never reaches the log: `/note` showed up in the chat
+  // frame as a failed turn, and `/brief` threw out of `session.append`.
+  //
+  // The kind is `plugin:<package name>` — the identity the harness's own V3→V4
+  // conversion gives an unnamed third-party producer — so rows this plugin
+  // wrote before the migration and rows it writes now agree.
+  const h = harness({ files: { '.dsh/progress.md': '## 进行中\n- 甲\n' } })
+  await h.invoke('note')
+  await h.invoke('brief')
+
+  for (const [label, message] of [
+    ['/note', h.followups[0]],
+    ['/brief', h.sessionAppends[0].data],
+  ]) {
+    const source = message.source
+    assert.equal(source.kind, 'plugin:dsh-progress-secretary', `${label} must name its producer`)
+    assert.notEqual(source.kind, 'plugin', `${label} must not use the retired catch-all kind`)
+    assert.equal(Object.hasOwn(source, 'plugin'), false, `${label} must not carry the retired wrapper field`)
+  }
+
+  // The source KIND changed; the declared FORM did not.
+  assert.equal(h.followups[0].source.form, 'instructions')
+  assert.equal(h.sessionAppends[0].data.source.form, 'snapshot')
+})
+
 // ── properties of the whole surface ──────────────────────────────────────────
 
 test('the plugin never writes a file, and never runs another plugin`s command', async () => {

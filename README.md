@@ -204,7 +204,7 @@ npm test
 | 维度 | 声明 |
 |---|---|
 | DSH | peer 声明 `@deepseek-ai/dsh-llm >=0.1.2-rc.1 <0.2.0`、`@deepseek-ai/cordis ^4.0.2`、`@deepseek-ai/schemastery >=3.0.0`。 |
-| DSH 实测 | `0.1.5-rc.3`（本机长期运行的 profile）、`0.1.7-rc.1`。见下方「验到了什么」。 |
+| DSH 实测 | `0.1.5-rc.3`（本机长期运行的 profile）、`0.1.7-rc.1`、`0.1.7-rc.2`（format v4，见 `CHANGELOG.md` 的 0.7.4）。见下方「验到了什么」。 |
 | Node.js | `^22.19.0 || >=24.0.0`（见 `engines`）。 |
 | Profile | **只支持 `web`**。`dsh.client.platform = "web"`：两个按钮与结果卡片是 Web 客户端的界面。host 半边本身与 profile 无关，但没有 client 半边就只剩两个命令。 |
 | 操作系统 | 没有平台相关代码，macOS / Linux / Windows 通用。本次实测基线为 macOS。 |
@@ -219,6 +219,8 @@ npm test
 3. `dsh --profile web --dump-config` 在 `0.1.7-rc.1` 上退出码 0、无报错，本插件的 loader 行正确合成。
 
 **没验到**：真实进程启动后浏览器里的实际渲染，以及卸载/回滚路径。这两项得在真机上有人看，本插件因此不声称它们已验证。
+
+`0.1.7-rc.2`（format v4）同样基于三组证据，并已据此写进 `dsh.compatibility.dshReleases`：整套 57 个用例在 rc.2 上跑通（0 skipped）；插件真实产出的两条消息通过 rc.2 自带的 `assertV4RowAdmission`（旧包装被拒，报错与用户所见逐字相同）；在一次性 `$DSH_HOME` 里从 GitHub 固定 commit 安装后，装进去的 `lib/*.js` 与仓库逐字节一致，同一 home 上 `dsh --profile web --dump-config` 退出码 0、无报错，本插件的 loader 行正确合成。**没验到的仍是**上面那条：真机浏览器渲染与卸载/回滚。
 
 ## 权限
 

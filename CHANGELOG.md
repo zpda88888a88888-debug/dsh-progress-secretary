@@ -6,6 +6,28 @@
 
 ---
 
+## 0.7.4 — format v4 的消息来源：`plugin` 包装换成生产者自有 kind
+
+**问题**：DSH 升到 `0.1.7-rc.2`（session format v4）后两个操作都点不动了。按钮还在、命令也注册上了，但点击后聊天框显示「本轮运行失败 format v4 message requires a producer-owned source kind」。原因是本插件发出的两条消息都带着 format v3 的来源包装 `{ kind: 'plugin', plugin: 'dsh-progress-secretary', form: ... }`；v4 在消息写入会话时校验来源，`kind === 'plugin'` 直接拒绝。两条注入路径的表现不同：`/note` 把指令投进收件箱，被 loop 认领成一个用户回合、写日志时才失败，于是错误落到「本轮」；`/brief` 的 `session.append` 当场抛出。
+
+**修正：**
+
+- `lib/index.js` 增加 `SOURCE_KIND`，两条消息改为 `source.kind = SOURCE_KIND`。`form`、`sections`、`content` 一律不动：`/note` 仍是 `instructions`，`/brief` 仍是 `snapshot`（含 `sections`）。
+- 取值 `plugin:dsh-progress-secretary`，即 `plugin:<包名>`。依据是平台自身的 V3→V4 迁移给「未具名的第三方生产者」分配的就是这个身份（`session-format-v3-to-v4` 的消息来源转换表：任何其他插件名 → `plugin:` + 完整原名）。于是迁移前写下的行与迁移后写下的行携带**同一个** kind，行头标签一致；裸包名同样能过校验，但会让同一个插件在同一个会话里显示成两个来源。
+- `spec.md` 6.1/6.2 写明来源要求与 `kind` 取值的理由；新增 2 条测试（smoke 断言两条消息的实际 `source`；conformance 断言源码里不再出现 `kind: 'plugin'`、且 `SOURCE_KIND` 恰被两条消息使用）。**变异验证**：把源码改回旧包装，两条新测试各红一条。
+
+**证据（三组，缺一不声明）：**
+
+1. 57 个用例对着 `0.1.7-rc.2` 的真实平台包跑通（0 skipped）—— 新增 2 条，原有 55 条不变；
+2. 把插件真实跑出的两条消息喂给 rc.2 自带的 `assertV4RowAdmission`：两条均通过；旧包装被拒，报错文本与用户看到的逐字相同；
+3. 一次性 `$DSH_HOME`（建在工作区内）里用官方 CLI 从 GitHub 固定 commit 安装 `0.7.4` 成功，装进去的 `lib/{index,client,notebook}.js` 与仓库逐字节一致；同一 home 上 `dsh --profile web --dump-config` 退出码 0、无报错，本插件的 loader 行正确合成（`id: progress-secretary` / `name: dsh-progress-secretary`）。**未验**：真机浏览器渲染、卸载/回滚。
+
+据此把 `dsh.compatibility.dshReleases` 补上 `0.1.7-rc.2`。
+
+**运行时影响**：`lib/index.js` 变了，需要重启 profile（`dsh --profile web`）才生效；`patchReload: live` 只管 patch 变更，不管 `lib/*.js`。
+
+---
+
 ## 0.7.3 — 上架：把「能装」和「说清楚」补齐
 
 **问题**：这个插件此前只在**一个**工作区里、用 `link:` 装法活着，因此从来没有回答过两个对外的问题：别人怎么装，以及在哪些 DSH 版本上装得住。`README` 里的安装命令是 npm 包名（而插件市场只接受固定到 commit 的 GitHub 源），兼容范围、权限面、已知风险三个字都没写；`package.json` 声明了 MIT 却没有 `LICENSE` 文件。更要命的是**位置**：两份 spec 与 `NOTES.md`/`CHANGELOG.md` 躺在插件的上一级，`test/spec-conformance.test.mjs` 用 `../../spec.md` 去读 —— 那条路径越过任何可能的仓库边界，别人 clone 下来测试必挂。

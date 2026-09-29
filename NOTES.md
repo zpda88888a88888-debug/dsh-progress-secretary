@@ -82,6 +82,14 @@
 
 **推论**：改 `lib/*.js`（host 侧）要重启 DSH；改 `lib/client.js`（手写 bundle，没有 watcher）要重启。两者本插件都做不到自我验证，见 §四。
 
+### 1.10 消息来源（format v4）
+
+- V4 起 `source.kind` 必须**生产者自有**，v3 的包装 `{ kind: 'plugin', plugin }` 在**写入会话时**被拒：`format v4 message requires a producer-owned source kind`（校验点在 `dsh-session-format-v3-to-v4` 的 `assertV4RowAdmission` → `assertV4SourceRowAdmission`，对 `user/message` 直接看 `row.data.source`）。空 kind 同样被拒。
+- 两条注入路径的**报错落点不同**：`agent.followup()` 只是投收件箱，等 loop 认领成回合、写 `user/message` 时才校验 —— 所以失败以「本轮运行失败」出现在聊天框；`session.append()` 同步校验，直接抛。
+- 平台给第三方生产者分配的 kind 是 `plugin:<完整包名>`（`session-format-v3-to-v4` 的消息来源转换表：「任何其他插件名 → `plugin:` + 完整原名」；一方同名生产者在那张表里逐个列出）。迁移旧行得到的就是这个字符串，所以新代码也用它会话内的来源才统一。
+- 未知 kind 不是错误：客户端 `contextProducer()` 只特判 `session-reference` / `agent-instructions` / `skill-invocation`，其余一律 `{ role: 'inject', label: kind }` —— 行头标签就是 kind 字符串本身，这也是换用裸包名会付的实际代价。
+- `dsh-llm` 的 `MessageSourceMap` 是 merge-extensible 的，注释明说「没有共享的 catch-all `plugin` kind」；一方插件一律 `kind: name`（`time-context`、`tmux-context`、`agent-instructions`）。
+
 ---
 
 ## 二、底层插件 `dsh-checkpoint-rewind` 的内部行为

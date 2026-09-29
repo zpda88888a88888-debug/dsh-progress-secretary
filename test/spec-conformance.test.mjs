@@ -129,6 +129,22 @@ test('RED LINE: the plugin does not fork sessions', () => {
   assert.doesNotMatch(client, /\bfork\b/u, 'spec section 7 lists three buttons, none of them fork')
 })
 
+test('RED LINE: emitted message sources are producer-owned, not the retired plugin wrapper', () => {
+  // Spec 6.1/6.2. Format v4 admits no `{ kind: 'plugin', plugin }` wrapper: such
+  // a message is refused at Session admission ("format v4 message requires a
+  // producer-owned source kind") and the user sees a failed turn instead of the
+  // operation. The rule is asserted on CODE — the JSDoc that explains it is a
+  // comment, and comments are stripped above.
+  assert.doesNotMatch(host, /kind: 'plugin'/u, 'the retired catch-all kind must not appear in code')
+  assert.match(
+    host,
+    /const SOURCE_KIND = `plugin:\$\{PLUGIN\}`/u,
+    'the producer-owned kind must be declared once, from the package name',
+  )
+  const declared = [...host.matchAll(/kind: SOURCE_KIND/gu)]
+  assert.equal(declared.length, 2, 'both emitted messages (instructions and snapshot) must declare it')
+})
+
 test('RED LINE: briefing commits to the log, never to the inbox', () => {
   // Spec 6.2. `followup()` puts the notebook in the inbox, the loop claims it as
   // a user turn, and a session that only wanted the background starts executing
